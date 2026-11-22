@@ -1,0 +1,9 @@
+# Core dependencies for standalone verification (`reproduce_v4_tables.py` & parser self-test)
+numpy>=1.26.0
+pandas>=2.1.0
+scikit-learn>=1.4.0
+
+# Optional dependencies for retraining from public statements (`train_qwen3_factorial_reference.py`)
+# torch>=2.3.0
+# transformers>=4.51.0
+# peft>=0.12.0

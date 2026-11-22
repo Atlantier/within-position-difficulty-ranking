@@ -1,0 +1,69 @@
+{
+  "protocol_id": "step7-prospective-abc-v1",
+  "frozen_timestamp_utc": "2026-11-21T07:30:20+00:00",
+  "prerequisite_protocol_version": "p3-proto-v2",
+  "freeze_boundary": {
+    "platform_primary": "AtCoder",
+    "series_primary": "ABC",
+    "latest_pre_freeze_completed_contest": "abc484 (2026-11-14 12:00 UTC)",
+    "first_eligible_post_freeze_contest": "abc485 and strictly subsequent ABC contests after frozen_timestamp_utc",
+    "secondary_accumulation_series": "Codeforces Div. 2 (Regular Div.2 + Educational Div.2), strictly within-series pairing"
+  },
+  "candidate_model_set": [
+    "length",
+    "structure",
+    "text",
+    "joint",
+    "pw_joint",
+    "bert",
+    "bge_mean",
+    "bge_cls",
+    "llm_deepseek_v4_1_flash_1017 (fixed temperature=0, locked single-item prompt SHA-256, tracked via 20 fixed dev anchors)"
+  ],
+  "pre_freeze_locked_selectors": {
+    "development_window": "ABC 2025 complete calendar year (18 blocks; 166 within-position / 1,162 pooled valid pairs)",
+    "tie_breaking_rule": "Deterministic preference for simpler/lower-parameter family on exact tie (length < structure < text < joint < pw_joint < bert < bge_mean < bge_cls < llm)",
+    "frozen_cf_all8_modern_selectors": {
+      "within_position_selected_model": "length",
+      "pooled_selected_model": "joint",
+      "same_winner_G_zero_rule": "If an alternative fixed selector pair selects the exact same model under both protocols, report G = 0.00 pp explicitly rather than omitting the observation or dropping the comparison."
+    }
+  },
+  "pairing_and_scoring_rules": {
+    "adjacent_block_rule": "Chronological non-overlapping pairs (1,2), (3,4) within platform & series; trailing unmatched odd contest held until next contest completes a block",
+    "within_position_definition": "Identical single-letter uppercase problem_index",
+    "prediction_sealing_sla": "Within 24 hours after contest end (and strictly before rating merge), snapshot raw HTML/sections -> run p3-proto-v2 parser & frozen models + locked LLM API -> write SHA-256 to step7_sealing_ledger.jsonl",
+    "label_harvest_sla": "Separate Day +14 post-contest fetch of AtCoder Problems problem-models.json (community integer difficulty; raw negative difficulties retained without clipDifficulty); fallback Day +21 if unrated/delayed",
+    "audit_flags_required": [
+      "statement_edited_after_seal",
+      "late_or_revised_rating",
+      "missing_label_or_experimental",
+      "rating_tie_same_slot",
+      "empty_within_position_block"
+    ]
+  },
+  "estimands": {
+    "primary_estimand": "ABC post-freeze within-position G = A_same(within-position-selected model) − A_same(pooled-selected model) in percentage points, evaluated across post-freeze adjacent-contest blocks with B=2,000 block bootstrap CIs",
+    "secondary_estimands": [
+      "LLM minus Joint Ridge (A_same difference and D)",
+      "BGE-Mean & Pairwise RankNet minus Joint Ridge (A_same and D)",
+      "BoW Text minus Length D (replication tracking; preserving E1's pre-locked D for E1's own historical identity)"
+    ],
+    "practical_horizon_plan": {
+      "planned_pilot_horizon": "10–12 blocks (20–24 ABC contests, ~5–6 months at ~1 contest/week), expected unconditional G 95% CI half-width +/-8 to +/-14 pp -> explicitly presented as a per-contest sealed prospective pilot with wide intervals",
+      "target_precision_reference": "Reaching +/-5 pp half-width on ABC G requires ~60–91 blocks (~120–182 contests); reaching +/-3 pp requires >200 blocks (comparable in scale to p10 historical simulations: ~239 blocks for ABC BoW-Len D, ~344 blocks for CF Joint-Surface same-slot gain)"
+    }
+  },
+  "maintainer_workload_logging_schema": {
+    "fields": [
+      "request_id",
+      "logged_utc",
+      "platform",
+      "series",
+      "candidate_slots",
+      "comparison_purpose"
+    ],
+    "goal": "Estimate empirical within-position proportion w_obs from a fixed collection window and reweight observed stratum accuracies Delta_same, Delta_diff into Delta(w_obs) = w_obs*Delta_same + (1 - w_obs)*Delta_diff (using 77.9% zero-crossing as fixed-stratum scenario benchmark)."
+  },
+  "protocol_sha256": "4057463a99c640e848ac4fcecaca64d0722858231af3c2ad21c16fff75c7ec36"
+}

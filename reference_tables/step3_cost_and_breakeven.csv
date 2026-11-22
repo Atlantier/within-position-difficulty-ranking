@@ -1,0 +1,16 @@
+cohort,model,unique_items,prompt_tokens,completion_tokens,total_api_latency_s,est_train_gpu_s,est_infer_gpu_s,verifiable_errors_at_30pct,errors_saved_vs_joint,prompt_tokens_per_saved_error,completion_tokens_per_saved_error
+CF_test,DeepSeek-Flash (no-think),1042,434820,9455,1762.4,0.0,0.0,87.0,-5.0,,
+CF_test,qwen_F0,1042,0,0,0.0,3.348,52.34,78.0,4.0,,
+CF_test,qwen_F1,1042,0,0,0.0,3.625,52.34,77.0,5.0,,
+CF_test,qwen_A0_s42,1042,0,0,0.0,3060.4,50.06,90.0,-8.0,,
+CF_test,qwen_A1_s42,1042,0,0,0.0,3780.192,47.16,85.0,-3.0,,
+ABC_test,DeepSeek-Flash (no-think),1382,410885,9881,2032.16,0.0,0.0,119.0,94.0,4371.1,105.1
+ABC_test,qwen_F0,1382,0,0,0.0,3.348,69.42,188.0,25.0,,
+ABC_test,qwen_F1,1382,0,0,0.0,3.625,69.42,183.0,30.0,,
+ABC_test,qwen_A0_s42,1382,0,0,0.0,3060.4,66.4,168.0,45.0,,
+ABC_test,qwen_A1_s42,1382,0,0,0.0,3780.192,62.54,196.0,17.0,,
+E1_CF_External,DeepSeek-Flash (no-think),902,322699,7009,1370.42,0.0,0.0,65.0,8.0,40337.4,876.1
+E1_CF_External,qwen_F0,902,0,0,0.0,3.348,45.31,73.0,0.0,,
+E1_CF_External,qwen_F1,902,0,0,0.0,3.625,45.31,71.0,2.0,,
+E1_CF_External,qwen_A0_s42,902,0,0,0.0,3060.4,43.34,75.0,-2.0,,
+E1_CF_External,qwen_A1_s42,902,0,0,0.0,3780.192,40.82,72.0,1.0,,

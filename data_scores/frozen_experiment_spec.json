@@ -1,0 +1,252 @@
+{
+  "spec_id": "v4-decision-refactor-steps1-3-v1",
+  "frozen_utc": "2026-11-21T11:01:50+00:00",
+  "status": "fixed_protocol_comparison_on_existing_historical_cohorts",
+  "research_questions": {
+    "RQ1_modeling_mechanism": "Among same-series adjacent-contest pairs sharing the same problem slot with unequal platform-published difficulty, does training with an explicit training-only slot bias b_k improve within-position statement-only accuracy of an adapted neural ranker relative to training without slot bias (A1 - A0)?",
+    "RQ2_review_budget_decision": "Under a fixed chronological manual review budget (pre-specified 30% scenario and 0%/10%/20%/30%/50% curves), which ranking and referral strategy minimizes verifiable automatic misorderings per 100 raw within-position requests?"
+  },
+  "retained_v3_evidence_roles": {
+    "position_rule_contrast": "Retained as motivation (91.01%–93.43% pooled vs 50.00% same-slot across CF/ABC/E1).",
+    "rolling_selection_G": "Retained cleanly (27/48 observed flips; 12/12 unconditional CIs cross zero; 58-grid not rerun for Qwen3).",
+    "step7_prospective_abc_v1": "Retained verbatim as separate prospective protocol (sha256 4057463a...; zero post-freeze contests claimed).",
+    "external_labeling": "All new Step 2/3 comparisons on historical cohorts explicitly labeled fixed-protocol retrospective comparisons, not new blind data collection."
+  },
+  "step2_qwen3_factorial_spec": {
+    "backbone_model_id": "Qwen/Qwen3-Embedding-0.6B",
+    "backbone_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+    "input_column": "statement_v2_readable",
+    "excluded_fields_at_inference": [
+      "name",
+      "contest_id",
+      "problem_index",
+      "slot",
+      "tags",
+      "editorial",
+      "rating",
+      "in_contest_stats"
+    ],
+    "representation": "L2-normalized last non-padding token hidden state -> Linear(1024, 1) scalar difficulty head f(x)",
+    "tokenization_rule": {
+      "padding_side": "left",
+      "truncation_strategy": "head_plus_tail_preserve_constraints",
+      "target_max_length": 768,
+      "fallback_max_length_if_vram_exceeds_7gib": 512,
+      "tail_tokens": 256
+    },
+    "training_pairs": {
+      "source_cohort": "CF_train (<=2021)",
+      "pairing_rule": "shift0 disjoint adjacent contest pairs within (series, year, quarter)",
+      "expected_valid_pairs": {
+        "total": 5193,
+        "same_slot": 800,
+        "diff_slot": 4393
+      }
+    },
+    "loss_functions": {
+      "no_slot_bias_F0_A0": "mean_pairs log(1 + exp(-y * (f(x_i) - f(x_j))))",
+      "with_slot_bias_F1_A1": "mean_pairs log(1 + exp(-y * (f(x_i) - f(x_j) + b_{k_i} - b_{k_j}))) + lambda_b * sum_{k != A} b_k^2",
+      "b_A_anchored": 0.0,
+      "lambda_b": 0.001,
+      "inference_formula": "f(x) only (b_k discarded at test time)"
+    },
+    "factorial_cells": {
+      "F0": {
+        "backbone": "frozen",
+        "slot_bias": false
+      },
+      "F1": {
+        "backbone": "frozen",
+        "slot_bias": true
+      },
+      "A0": {
+        "backbone": "LoRA (r=8, alpha=16, q_proj/v_proj)",
+        "slot_bias": false
+      },
+      "A1": {
+        "backbone": "LoRA (r=8, alpha=16, q_proj/v_proj)",
+        "slot_bias": true
+      }
+    },
+    "training_hyperparameters": {
+      "engineering_sanity_split": "CF_train <=2020 vs 2021 (never using CF_dev or test sets for code debugging)",
+      "early_stop_metric": "CF_dev_2022 within-position accuracy (earliest epoch on exact tie)",
+      "primary_seed": 42,
+      "extra_seeds_for_A0_A1": [
+        101,
+        202
+      ],
+      "epochs": 5,
+      "effective_batch_pairs": 32,
+      "precision": "bf16"
+    },
+    "evaluation_cohorts": {
+      "primary": "CF_test (CF Div. 2: 274 directional / 400 candidate same-slot pairs, 101 blocks)",
+      "cross_platform": "ABC_test (646 / 646, 91 blocks)",
+      "cross_series": "E1_CF_External (227 / 341, 52 blocks)",
+      "auxiliary": [
+        "ARC_test (170, 33 blocks)",
+        "E2_ABC_PostCutoff (21, 3 blocks)"
+      ],
+      "primary_contrast": "A1 - A0 (seed 42 primary, plus seeds 101, 202 variability)",
+      "application_contrasts": [
+        "A1 - Joint",
+        "A0 - Joint"
+      ],
+      "block_bootstrap": {
+        "B": 2000,
+        "seed": 42,
+        "tie_credit": 0.5,
+        "tie_tol": 1e-12
+      }
+    }
+  },
+  "step3_budget_replay_spec": {
+    "request_definition": "Every same-slot pair (including official rating ties) inside adjacent shift0 contest-pair blocks",
+    "chronological_order": "Sorted by block max_start_time ascending, then contest_b, contest_a; within block, problem_index ascending",
+    "quota_allocation": "Online prefix quota Q_t = floor(budget * N_t); block referral quota dQ_t = Q_t - Q_{t-1}",
+    "referral_ranking": "Ascending |s_a - s_b| (smallest margin referred first)",
+    "tie_break_hash": "sha256('|'.join(sorted([key_a, key_b])) + salt) ascending",
+    "auto_tie_policy": {
+      "primary_operational": "If automated model predicts exact tie (|s_a - s_b| <= 1e-12), fall back to Joint Ridge direction",
+      "zero_budget_academic_reference": "Also report 0% academic 0.5-tie credit baseline alongside 0% operational tie-fallback"
+    },
+    "budgets": [
+      0.0,
+      0.1,
+      0.2,
+      0.3,
+      0.5
+    ],
+    "primary_budget": 0.3,
+    "primary_metric": "verifiable_auto_errors_per_100_requests (with official ties reported separately as unverifiable)",
+    "secondary_metrics": [
+      "auto_verifiable_error_rate_pct",
+      "2x2 referral_vs_ranking decomposition",
+      "CF behavioral solve_rate & |dp|>=0.03"
+    ],
+    "salt_sensitivity": [
+      "",
+      "salt1",
+      "salt2",
+      "salt3",
+      "salt4"
+    ]
+  },
+  "precommitted_interpretation_rules": {
+    "case_positive_A1_gt_A0": "If A1 > A0 cleanly on CF Div. 2 (and transfers cleanly), claim LoRA adaptation plus training slot-bias regularization as a mechanistic improvement.",
+    "case_lora_only": "If A0 > F0 clearly while A1 - A0 ~ 0 or negative, attribute gains to LoRA representation adaptation and state honestly that training-only slot-bias subtraction does not improve within-position generalization.",
+    "case_null_or_wide_ci": "If 95% CIs across F0/F1/A0/A1 overlap zero against Joint, report effect sizes and CIs directly and anchor applied contribution on the Step 3 review-budget workflow results."
+  },
+  "cohort_pair_counts_verified": {
+    "CF_train": {
+      "n_items": 2568,
+      "n_paired_contests": 554,
+      "n_paired_unique_items": 2431,
+      "n_blocks": 277,
+      "n_nonempty_same_blocks": 273,
+      "same_cand": 974,
+      "same_dir": 800,
+      "same_ties": 174,
+      "pool_cand": 5489,
+      "pool_dir": 5193
+    },
+    "CF_dev": {
+      "n_items": 350,
+      "n_paired_contests": 66,
+      "n_paired_unique_items": 331,
+      "n_blocks": 33,
+      "n_nonempty_same_blocks": 30,
+      "same_cand": 144,
+      "same_dir": 100,
+      "same_ties": 44,
+      "pool_cand": 853,
+      "pool_dir": 778
+    },
+    "CF_test": {
+      "n_items": 1042,
+      "n_paired_contests": 202,
+      "n_paired_unique_items": 983,
+      "n_blocks": 101,
+      "n_nonempty_same_blocks": 94,
+      "same_cand": 400,
+      "same_dir": 274,
+      "same_ties": 126,
+      "pool_cand": 2395,
+      "pool_dir": 2224
+    },
+    "ABC_train": {
+      "n_items": 923,
+      "n_paired_contests": 180,
+      "n_paired_unique_items": 865,
+      "n_blocks": 90,
+      "n_nonempty_same_blocks": 89,
+      "same_cand": 411,
+      "same_dir": 410,
+      "same_ties": 1,
+      "pool_cand": 2394,
+      "pool_dir": 2393
+    },
+    "ABC_dev": {
+      "n_items": 400,
+      "n_paired_contests": 48,
+      "n_paired_unique_items": 384,
+      "n_blocks": 24,
+      "n_nonempty_same_blocks": 24,
+      "same_cand": 192,
+      "same_dir": 192,
+      "same_ties": 0,
+      "pool_cand": 1536,
+      "pool_dir": 1536
+    },
+    "ABC_test": {
+      "n_items": 1382,
+      "n_paired_contests": 182,
+      "n_paired_unique_items": 1298,
+      "n_blocks": 91,
+      "n_nonempty_same_blocks": 91,
+      "same_cand": 646,
+      "same_dir": 646,
+      "same_ties": 0,
+      "pool_cand": 4640,
+      "pool_dir": 4640
+    },
+    "E1_CF_External": {
+      "n_items": 902,
+      "n_paired_contests": 104,
+      "n_paired_unique_items": 739,
+      "n_blocks": 52,
+      "n_nonempty_same_blocks": 51,
+      "same_cand": 341,
+      "same_dir": 227,
+      "same_ties": 114,
+      "pool_cand": 2630,
+      "pool_dir": 2399
+    },
+    "ARC_test": {
+      "n_items": 422,
+      "n_paired_contests": 66,
+      "n_paired_unique_items": 352,
+      "n_blocks": 33,
+      "n_nonempty_same_blocks": 33,
+      "same_cand": 170,
+      "same_dir": 170,
+      "same_ties": 0,
+      "pool_cand": 948,
+      "pool_dir": 948
+    },
+    "E2_ABC_PostCutoff": {
+      "n_items": 42,
+      "n_paired_contests": 6,
+      "n_paired_unique_items": 42,
+      "n_blocks": 3,
+      "n_nonempty_same_blocks": 3,
+      "same_cand": 21,
+      "same_dir": 21,
+      "same_ties": 0,
+      "pool_cand": 147,
+      "pool_dir": 147
+    }
+  },
+  "spec_sha256": "ee08471d870b021513024dd909918b319687503bf060e85891734ca9fb2338ef"
+}
